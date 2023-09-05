@@ -1,0 +1,23 @@
+port: "8000",
+
+  db:
+    username: "admin"
+    host: "localhost"
+    port: "8080"
+    password: "admin"
+    dbname: "postgres"
+    sslmode: "disable"
+
+  natsProd:
+    clusterId: "shop-cluster"
+    clientId: "example-publisher"
+    channel: "outshop-channel"
+    natsURL: "nats://localhost:4222"
+    subject: "new-subject"
+
+  natsCons:
+    clusterId: "shop-cluster"
+    clientId: "beginner-subscriber"
+    channel: "inshop-channel"
+    natsURL: "nats://localhost:4222"
+    durableName: "new-durable"
