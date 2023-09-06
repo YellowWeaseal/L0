@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 CREATE TABLE delivery_info
 (
-    id serial not null unique  ,
+    id SERIAL NOT NULL UNIQUE ,
     name      VARCHAR(255) not null ,
     phone     VARCHAR(20) not null ,
     zip       VARCHAR(20) not null ,
@@ -13,7 +13,7 @@ CREATE TABLE delivery_info
 );
 CREATE TABLE payment_info
 (
-    id serial not null unique ,
+    id SERIAL NOT NULL UNIQUE ,
     transaction   VARCHAR(255) NOT NULL UNIQUE ,
     request_id    VARCHAR(255),
     currency      VARCHAR(10) NOT NULL ,
@@ -28,7 +28,7 @@ CREATE TABLE payment_info
 CREATE TABLE items
 (
     id serial not null unique ,
-    chrt_id      INT not null unique ,
+    chrt_id      INT NOT NULL UNIQUE ,
     track_number VARCHAR(255) NOT NULL UNIQUE ,
     price        INT NOT NULL ,
     rid          VARCHAR(255) NOT NULL UNIQUE ,
@@ -42,12 +42,13 @@ CREATE TABLE items
 );
 CREATE TABLE orders
 (
-    order_uid        VARCHAR(255) not null unique ,
-    track_number     VARCHAR(255) not null unique ,
+    order_uid        VARCHAR(255) NOT NULL unique ,
+    track_number     VARCHAR(255)NOT NULL unique ,
     entry            VARCHAR(255) NOT NULL ,
-    delivery_id INT NOT NULL UNIQUE REFERENCES delivery_info(id),
-    payment_id INT NOT NULL UNIQUE REFERENCES payment_info(id),
+    delivery_id INT NOT NULL UNIQUE REFERENCES delivery_info(id) on delete cascade,
+    payment_id INT NOT NULL UNIQUE REFERENCES payment_info(id) on delete cascade,
     locale           VARCHAR(10) NOT NULL ,
+    internal_signature varchar(255),
     customer_id      VARCHAR(255) NOT NULL UNIQUE ,
     delivery_service VARCHAR(255) NOT NULL ,
     shard_key         VARCHAR(10) NOT NULL ,
@@ -58,15 +59,18 @@ CREATE TABLE orders
 
 CREATE TABLE order_items
 (
-    order_id uuid references orders(order_uid),
-    item_id  SERIAL
+    order_id VARCHAR(255) references  orders(order_uid) on delete cascade,
+    item_id  INT REFERENCES items(id) on delete cascade
 );
 -- +goose StatementEnd
 -- +goose Down
 -- +goose StatementBegin
+DROP TABLE order_items;
 DROP TABLE orders;
-DROP TABLE delivery_info;
-DROP TABLE payment_info;
 DROP TABLE items;
+DROP TABLE payment_info;
+DROP TABLE delivery_info;
+
+
 
 -- +goose StatementEnd

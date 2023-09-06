@@ -1,6 +1,7 @@
 package TESTShop
 
 import (
+	"github.com/go-playground/validator/v10"
 	"time"
 )
 
@@ -62,18 +63,31 @@ type OrderItems struct {
 	ItemId   int    `json:"item_id" db:"item_id"`
 }
 type OrderResponse struct {
-	OrderUID          string    `json:"order_uid"`
-	TrackNumber       string    `json:"track_number"`
-	Entry             string    `json:"entry"`
-	Delivery          Delivery  `json:"delivery"`
-	Payment           Payment   `json:"payment"`
-	Items             []Item    `json:"items"`
-	Locale            string    `json:"locale"`
-	InternalSignature string    `json:"internal_signature"`
-	CustomerID        string    `json:"customer_id"`
-	DeliveryService   string    `json:"delivery_service"`
-	ShardKey          string    `json:"shardkey"`
-	SMID              int       `json:"sm_id"`
-	DateCreated       time.Time `json:"date_created"`
-	OofShard          string    `json:"oof_shard"`
+	OrderUID          string    `json:"order_uid" validate:"required"`
+	TrackNumber       string    `json:"track_number" validate:"required"`
+	Entry             string    `json:"entry" validate:"required"`
+	Delivery          Delivery  `json:"delivery" validate:"required"`
+	Payment           Payment   `json:"payment" validate:"required"`
+	Items             []Item    `json:"items" validate:"required"`
+	Locale            string    `json:"locale" validate:"required"`
+	InternalSignature string    `json:"internal_signature" validate:"required"`
+	CustomerID        string    `json:"customer_id" validate:"required"`
+	DeliveryService   string    `json:"delivery_service" validate:"required"`
+	ShardKey          string    `json:"shardkey" validate:"required"`
+	SMID              int       `json:"sm_id" validate:"required"`
+	DateCreated       time.Time `json:"date_created" validate:"required"`
+	OofShard          string    `json:"oof_shard" validate:"required"`
+}
+
+func validateOrderResponse(order OrderResponse) error {
+	// Создаем экземпляр валидатора
+	validate := validator.New()
+
+	// Проверяем структуру на соответствие правилам валидации
+	err := validate.Struct(order)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

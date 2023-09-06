@@ -3,6 +3,7 @@ package main
 import (
 	"TESTShop"
 	"TESTShop/pkg/broker"
+	"TESTShop/pkg/cache"
 	"TESTShop/pkg/handler"
 	"TESTShop/pkg/repository"
 	"TESTShop/pkg/service"
@@ -12,11 +13,12 @@ import (
 	"github.com/spf13/viper"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 )
 
 func initConfig() error {
-	viper.AddConfigPath("config")
+	viper.AddConfigPath("configs")
 	viper.SetConfigName("config")
 	return viper.ReadInConfig()
 }
@@ -26,6 +28,16 @@ func main() {
 
 	if err := initConfig(); err != nil {
 		logrus.Fatalf("error initializing configs: %s", err)
+	}
+
+	cfg := broker.ConfigNATS{
+		ClusterID:        viper.GetString("nats.clusterId"),
+		ClientIdConsumer: viper.GetString("nats.clientIdConsumer"),
+		ClientIdProducer: viper.GetString("nats.clientIdProducer"),
+		ChannelName:      viper.GetString("nats.channel"),
+		NatsUrl:          viper.GetString("nats.natsURL"),
+		DurableName:      viper.GetString("nats.durableName"),
+		Subject:          viper.GetString("nats.subject"),
 	}
 
 	db, err := repository.NewPostgresDB(repository.ConfigDB{
@@ -40,28 +52,36 @@ func main() {
 		logrus.Fatalf("failed to initialize db: %s", err.Error())
 	}
 
-	sc, err := broker.CreateProducer(broker.ConfigNATSProducer{
-		ClusterID: viper.GetString("natsProd.clusterId"),
-		ClientID:  viper.GetString("natsProd.clientId"),
-		NatsUrl:   viper.GetString("natsProd.natsURL"),
-	})
+	sc, err := broker.CreateProducer(cfg.ClientIdProducer, cfg.ClusterID, cfg.NatsUrl)
 	if err != nil {
 		logrus.Fatalf("failed to initialize producer %s", err)
 	}
 
-	broker.SendMessage(sc, viper.GetString("natsProd.subject"), 5)
-
-	err = broker.ReadFromChannel(broker.ConfigNATSConsumer{
-		ClusterID:   viper.GetString("natsCons.clusterId"),
-		ClientID:    viper.GetString("natsCons.clientId"),
-		ChannelName: viper.GetString("natsCons.channel"),
-		NatsUrl:     viper.GetString("natsCons.natsURL"),
-		DurableName: viper.GetString("natsCons.durableName"),
-	})
+	cacheInMemory := make(map[string]TESTShop.OrderResponse)
+	cacheMutex := sync.Mutex{}
 
 	repos := repository.NewRepository(db)
-	services := service.NewService(repos)
+	brokers := broker.NewBroker(sc)
+	caches := cache.NewCache(cacheInMemory, &cacheMutex)
+	services := service.NewOrderService(repos, brokers, caches)
 	handlers := handler.NewHandler(services)
+
+	//заполнить конфиг
+
+	go func() {
+		err := services.StartProcessMessages(cfg.ChannelName)
+		logrus.Print("start process messages")
+		if err != nil {
+			logrus.Errorf("error while processing messages %s", err)
+		}
+	}()
+
+	err = broker.PublishMessage(sc, viper.GetString("nats.channel"), 2)
+	if err != nil {
+		logrus.Fatalf("error while sending messages %s", err)
+	}
+
+	services.InitCache()
 
 	srv := new(TESTShop.Server)
 	go func() {
@@ -76,7 +96,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 	<-quit
 
-	logrus.Print("TodoApp Shutting Down")
+	logrus.Print("TestShopApp Shutting Down")
 
 	if err := srv.Shutdown(context.Background()); err != nil {
 		logrus.Errorf("error occured on server shutting down: %s", err.Error())

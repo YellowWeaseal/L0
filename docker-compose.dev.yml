@@ -9,45 +9,17 @@ services:
       POSTGRES_DB: demonstration_shop
       PGDATA: /var/lib/postgresql/data/
     ports:
-      - "8080:5432"
+      - "5432:5432"
     volumes:
       - db:/var/lib/postgresql/data/
 
-  nats-cluster:
+  nats-streaming:
     image: nats-streaming:latest
-    command: ["nats-streaming-server", "-p", "4222", "--cluster_id", "shop-cluster", "--clustered", "--routes", "nats://nats-cluster2:6222", "--cluster_node_id", "nats-cluster1"]
     ports:
-      - "4222:4222"
-    networks:
-      - app-network
-
-  nats-cluster2:
-    image: nats-streaming:latest
-    command: ["nats-streaming-server", "-p", "4222", "--cluster_id", "shop-cluster", "--clustered", "--routes", "nats://nats-cluster1:6222", "--cluster_node_id", "nats-cluster2"]
-    networks:
-      - app-network
-
-  nats-publisher:
-    image: nats-streaming:latest
-    command: [ "nats-streaming-publisher", "-s", "nats://nats-cluster:4222", "inshop-channel", "Сообщение издателя" ]
-    depends_on:
-      - nats-cluster
-    networks:
-      - nats-network
-
-  nats-subscriber:
-    image: nats-streaming:latest
-    command: [ "nats-streaming-subscriber", "-s", "nats://nats-cluster:4222", "outshop-channel" ]
-    depends_on:
-      - nats-cluster
-    networks:
-      - nats-network
-
-networks:
-  app-network:
-    driver: bridge
-  nats-network:
-    driver: bridge
+      - "4222:4222" # Порт для подключения к серверу NATS Streaming
+    environment:
+      - STAN_CLUSTER_ID=testShop_cluster
+    command: ["--cluster_id=testShop_cluster"]
 
 volumes:
   db:
