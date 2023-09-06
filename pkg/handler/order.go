@@ -6,10 +6,10 @@ import (
 )
 
 func (h *Handler) getOrderByUID(c *gin.Context) {
-	orderUID, err := getUserId(c)
+	orderUID, err := getOrderUID(c)
 	if err != nil {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
-		return
+
 	}
 
 	order, err := h.services.GetOrderByUID(orderUID)

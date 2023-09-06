@@ -2,51 +2,42 @@ package broker
 
 import (
 	"TESTShop"
-	"TESTShop/pkg/cache"
-	"TESTShop/pkg/service"
 	"encoding/json"
 	"github.com/nats-io/stan.go"
 	"github.com/sirupsen/logrus"
 	"time"
 )
 
-type ConfigNATSConsumer struct {
-	ClusterID   string
-	ClientID    string
-	ChannelName string
-	NatsUrl     string
-	DurableName string
+type ConfigNATS struct {
+	ClusterID        string
+	ClientIdConsumer string
+	ClientIdProducer string
+	ChannelName      string
+	NatsUrl          string
+	DurableName      string
+	Subject          string
 }
 type Broker struct {
-	Services *service.Service
+	sc stan.Conn
 }
 
-func NewBroker(services *service.Service) *Broker {
-	return &Broker{Services: services}
+func NewBroker(sc stan.Conn) *Broker {
+	return &Broker{sc: sc}
 }
 
-func (c *Broker) ReadFromChannel(cfg ConfigNATSConsumer) error {
+func (b *Broker) ReadFromChannel(channelName string, orders chan<- TESTShop.OrderResponse) error {
 
-	sc, err := stan.Connect(cfg.ClusterID, cfg.ClientID)
-	if err != nil {
-		logrus.Errorf("error to connect nats-streaming server %s", err)
-	}
-	defer sc.Close()
-
-	subscription, err := sc.Subscribe(cfg.ChannelName, func(msg *stan.Msg) {
+	subscription, err := b.sc.Subscribe(channelName, func(msg *stan.Msg) {
 
 		var order TESTShop.OrderResponse
 		if err := json.Unmarshal(msg.Data, &order); err != nil {
 			logrus.Errorf("error during unmarshall message %s", err)
 			return
 		}
-		cache.AddToCache(&order)
-		err = c.Services.InsertOrderResponse(order)
-		if err != nil {
-			logrus.Errorf("error while writing to database %s", err)
-			return
-		}
-	}, stan.DurableName(cfg.DurableName))
+
+		orders <- order
+
+	})
 
 	if err != nil {
 		logrus.Errorf("error creating subscriber %s", err)
@@ -57,5 +48,6 @@ func (c *Broker) ReadFromChannel(cfg ConfigNATSConsumer) error {
 
 	// Отмена подписки и завершение работы
 	subscription.Unsubscribe()
+
 	return nil
 }

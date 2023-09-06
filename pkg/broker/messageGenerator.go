@@ -3,6 +3,7 @@ package broker
 import (
 	"TESTShop"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"math/rand"
 	"time"
 )
@@ -68,6 +69,6 @@ func generateRandomMessage() TESTShop.OrderResponse {
 		DateCreated:       time.Now(),
 		OofShard:          randomString(1),
 	}
-
+	logrus.Printf("generate order %s", message)
 	return message
 }

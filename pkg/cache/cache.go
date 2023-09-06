@@ -2,40 +2,38 @@ package cache
 
 import (
 	"TESTShop"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"sync"
 )
 
-/*type Cache struct {
-	Services *service.Service
+type Cache struct {
+	cache      map[string]TESTShop.OrderResponse
+	cacheMutex *sync.Mutex
 }
 
-func NewCache(services *service.Service) *Cache {
-	return &Cache{Services: services}
-}*/
-
-var cacheMutex sync.Mutex
-var cache map[string]*TESTShop.OrderResponse
-
-func AddToCache(order *TESTShop.OrderResponse) {
-	cacheMutex.Lock()
-	defer cacheMutex.Unlock()
-
-	// Сохраняем заказ в кэше по ключу OrderUID
-	cache[order.OrderUID] = order
+func NewCache(cache map[string]TESTShop.OrderResponse, cacheMutex *sync.Mutex) *Cache {
+	//map mutex
+	return &Cache{cache: cache, cacheMutex: cacheMutex}
 }
 
-func GetOrderByUID(orderUID string) (*TESTShop.OrderResponse, error) {
-	cacheMutex.Lock()
-	defer cacheMutex.Unlock()
+func (c *Cache) AddToCache(order TESTShop.OrderResponse) {
 
-	// Извлекаем заказ из кэша по ключу OrderUID
-	order, found := cache[orderUID]
+	c.cacheMutex.Lock()
+	defer c.cacheMutex.Unlock()
+
+	c.cache[order.OrderUID] = order
+}
+
+func (c *Cache) GetOrderByUID(orderUID string) (TESTShop.OrderResponse, bool) {
+
+	c.cacheMutex.Lock()
+	defer c.cacheMutex.Unlock()
+
+	order, found := c.cache[orderUID]
 	if !found {
 		logrus.Error("order is not found in cache ")
-		return nil, errors.New("order not found")
+		return order, false
 	}
 
-	return order, nil
+	return order, true
 }
